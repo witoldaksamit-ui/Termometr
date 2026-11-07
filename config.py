@@ -51,13 +51,13 @@ PUBLISH_EVERY_N_LOOPS = 8        # co ile pętli wysyłamy dane na GitHub
 
 # --- Efekty przy odświeżaniu --------------------------------------------------
 # Na początku wyświetlania (jak pojawiają się nowe temperatury).
-# Dostępne: "fill" (klasyczne wypełnianie dioda po diodzie), "fade" (płynne rozjaśnienie),
+# Dostępne: "fill" (klasyczne wypełnianie dioda po diodzie), "drop" (krople spadają i układają się w słupek),
 #           "twinkle" (diody pojawiają się losowo z białym błyskiem), "comet" (kometa
 #           zostawia za sobą obraz), "rainbow" (tęcza zamienia się w obraz),
 #           "curtain" (obraz otwiera się od końców paska ku środkowi).
 # "random" = losuje z listy INTROS_ENABLED (bez powtarzania tego samego dwa razy z rzędu).
 INTRO = "random"
-INTROS_ENABLED = ["fill", "fade", "twinkle", "comet", "rainbow", "curtain"]
+INTROS_ENABLED = ["fill", "drop", "twinkle", "comet", "rainbow", "curtain"]
 
 # Na końcu wyświetlania: efekt, którym gaśnie stary obraz, zanim narysują się nowe temperatury.
 # Dostępne: "fade" (płynne wygaszenie), "dissolve" (losowe gaśnięcie diod),

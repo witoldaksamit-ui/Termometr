@@ -74,7 +74,7 @@ class LedDisplay:
         # Efekty na POCZĄTKU wyświetlania: budują nowy obraz (argument = docelowa ramka).
         self._intros: Dict[str, Callable[[List[int]], None]] = {
             "fill": self._intro_fill,
-            "fade": self._intro_fade,
+            "drop": self._intro_drop,
             "twinkle": self._intro_twinkle,
             "comet": self._comet,
             "rainbow": self._intro_rainbow,
@@ -250,14 +250,33 @@ class LedDisplay:
             self.strip.show()
             time.sleep(config.PIXEL_DELAY_S)
 
-    def _intro_fade(self, target: List[int], steps: int = 25, delay: float = 0.04) -> None:
-        """Cały obraz płynnie się rozjaśnia z ciemności."""
-        for step in range(1, steps + 1):
-            factor = (step / steps) ** 2
-            for i, color in enumerate(target):
-                self._set(i, scale_color(color, factor))
+    def _intro_drop(self, target: List[int], frame_delay: float = 0.012, spacing: int = 2) -> None:
+        """Kolorowe krople spadają od końca każdej skali i układają się w słupek od jej początku."""
+        segments = [(0, config.LED_COUNT_EXT), (config.LED_COUNT_EXT, config.LED_COUNT_INT)]
+        queues = [[i for i in range(start, start + length) if target[i] != OFF] for start, length in segments]
+        ends = [start + length - 1 for start, length in segments]
+        settled = [OFF] * len(target)
+        falling: List[List[int]] = []  # [aktualna pozycja, docelowa dioda]
+        frame = 0
+        while any(queues) or falling:
+            if frame % spacing == 0:  # co `spacing` klatek startuje kolejna kropla w każdej skali
+                for queue, end in zip(queues, ends):
+                    if queue:
+                        falling.append([end, queue.pop(0)])
+            image = list(settled)
+            still_falling = []
+            for position, dest in falling:
+                if position <= dest:
+                    settled[dest] = image[dest] = target[dest]
+                else:
+                    image[position] = target[dest]
+                    still_falling.append([position - 1, dest])
+            falling = still_falling
+            for i, color in enumerate(image):
+                self._set(i, color)
             self.strip.show()
-            time.sleep(delay)
+            time.sleep(frame_delay)
+            frame += 1
 
     def _intro_twinkle(self, target: List[int], duration: float = 2.0, flash_len: int = 3) -> None:
         """Diody pojawiają się w losowej kolejności: najpierw białym błyskiem, potem we właściwym kolorze."""

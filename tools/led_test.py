@@ -38,7 +38,7 @@ def main() -> None:
                 time.sleep(1)
                 display.transition(name)
         elif args.intros:
-            for name in ("fill", "fade", "twinkle", "comet", "rainbow", "curtain"):
+            for name in ("fill", "drop", "twinkle", "comet", "rainbow", "curtain"):
                 print(f"Początek: {name}")
                 display.show_temps(outdoor=8, indoor=21, intro=name)
                 time.sleep(2)

@@ -87,7 +87,7 @@ Każde odświeżenie ma dwa etapy i na każdym działa osobny efekt (domyślnie 
 nigdy ten sam dwa razy z rzędu):
 
 - **Koniec wyświetlania** (gaszenie starego obrazu): `fade`, `dissolve`, `comet`, `rainbow`, `curtain`, `clear`
-- **Początek wyświetlania** (pojawianie się nowych temperatur): `fill`, `fade`, `twinkle`, `comet`, `rainbow`, `curtain`
+- **Początek wyświetlania** (pojawianie się nowych temperatur): `fill`, `drop`, `twinkle`, `comet`, `rainbow`, `curtain`
 
 W `config.py` ustaw `TRANSITION` i `INTRO` na `"random"` (losowanie z list `TRANSITIONS_ENABLED`
 i `INTROS_ENABLED`) albo na nazwę jednego efektu. Nowy efekt dodasz jako metodę w `display.py`
