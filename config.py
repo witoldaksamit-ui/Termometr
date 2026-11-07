@@ -45,10 +45,19 @@ INT_MIN_TEMP = 10                # skala domowa:      10 ...  30 °C
 
 # --- Czasy (sekundy) ---------------------------------------------------------
 PIXEL_DELAY_S = 0.05             # opóźnienie między kolejnymi diodami w animacji
-CLEAR_PAUSE_S = 2                # przerwa na zgaszonym pasku przed rysowaniem
 LOOP_PAUSE_S = 10                # przerwa po narysowaniu temperatur
 RESTART_DELAY_S = 5              # przerwa przed ponowną próbą po błędzie
 PUBLISH_EVERY_N_LOOPS = 8        # co ile pętli wysyłamy dane na GitHub
+
+# --- Przejścia przy odświeżaniu ------------------------------------------------
+# Efekt, którym gaśnie stary obraz, zanim narysują się nowe temperatury.
+# Dostępne: "fade" (płynne wygaszenie), "dissolve" (losowe gaśnięcie diod),
+#           "comet" (kometa zmiatająca obraz), "rainbow" (tęcza, potem wygaszenie),
+#           "curtain" (zamykanie od końców paska), "clear" (zgaszenie od razu).
+# "random" = losuje z listy TRANSITIONS_ENABLED (bez powtarzania tego samego dwa razy z rzędu).
+TRANSITION = "random"
+TRANSITIONS_ENABLED = ["fade", "dissolve", "comet", "rainbow", "curtain"]
+TRANSITION_PAUSE_S = 0.5         # przerwa w ciemności po przejściu, przed rysowaniem
 
 # --- Czujnik zewnętrzny (Zigbee2MQTT, odczyt z journalctl) --------------------
 ZIGBEE_SERVICE = "zigbee2mqtt.service"

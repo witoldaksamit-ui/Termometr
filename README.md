@@ -68,7 +68,10 @@ journalctl -u termometr -f      # podgląd logów
 ```bash
 sudo python3 tools/led_test.py             # animacja koloru
 sudo python3 tools/led_test.py --palette   # pełne palety skal
+sudo python3 tools/led_test.py --transitions   # podgląd wszystkich przejść
 ```
+
+Przed testem zatrzymaj główny program (`sudo pkill -f main.py`), bo dwa programy nie mogą naraz sterować paskiem.
 
 ## Formaty plików wysyłanych na GitHub
 
@@ -76,6 +79,14 @@ Czytają je inne programy (aplikacja z temperaturą, zegarek Garmin), więc nie 
 
 - `temperatures.txt`: jedna linia na pomiar, `<czas ISO Warszawa>,<dom>,<zewnątrz>`, maksymalnie ok. 800 linii
 - `monkey.txt`: trzy linie, `<dom>`, `<zewnątrz>`, `<HH:MM:SS>`
+
+## Przejścia przy odświeżaniu
+
+Zanim narysują się nowe temperatury, stary obraz gaśnie jednym z efektów:
+`fade` (płynne wygaszenie), `dissolve` (losowe gaśnięcie diod), `comet` (kometa),
+`rainbow` (tęcza), `curtain` (zamykanie od końców paska), `clear` (od razu).
+W `config.py` ustaw `TRANSITION = "random"` (losowanie z `TRANSITIONS_ENABLED`)
+albo nazwę jednego efektu. Własny efekt dodasz jako metodę w `display.py` i wpisem w słowniku `_transitions`.
 
 ## Najczęstsze zmiany
 

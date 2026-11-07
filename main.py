@@ -33,8 +33,7 @@ class Thermometer:
         if new_outdoor is not None:
             self.outdoor = new_outdoor
 
-        self.display.clear()
-        time.sleep(config.CLEAR_PAUSE_S)
+        self.display.transition()
         self.display.show_temps(round(self.outdoor), round(indoor))
 
         local_time = datetime.now().strftime("%H:%M:%S")

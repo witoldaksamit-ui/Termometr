@@ -3,6 +3,7 @@
 Uruchom z katalogu projektu:
     sudo python3 tools/led_test.py            # animacja wypełniania kolorem (Ctrl+C kończy)
     sudo python3 tools/led_test.py --palette  # pełne palety obu skal
+    sudo python3 tools/led_test.py --transitions  # podgląd wszystkich przejść
 """
 
 import argparse
@@ -20,6 +21,7 @@ from display import LedDisplay  # noqa: E402
 def main() -> None:
     parser = argparse.ArgumentParser(description="Test pasków LED termometru")
     parser.add_argument("--palette", action="store_true", help="pokaż pełne palety skal")
+    parser.add_argument("--transitions", action="store_true", help="pokaż po kolei wszystkie przejścia")
     args = parser.parse_args()
 
     display = LedDisplay()
@@ -27,6 +29,12 @@ def main() -> None:
         if args.palette:
             display.show_palette()
             time.sleep(10)
+        elif args.transitions:
+            for name in ("fade", "dissolve", "comet", "rainbow", "curtain", "clear"):
+                print(f"Przejście: {name}")
+                display.show_temps(outdoor=8, indoor=21)
+                time.sleep(1)
+                display.transition(name)
         else:
             while True:
                 print("Color wipe...")
