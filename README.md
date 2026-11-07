@@ -68,7 +68,8 @@ journalctl -u termometr -f      # podgląd logów
 ```bash
 sudo python3 tools/led_test.py             # animacja koloru
 sudo python3 tools/led_test.py --palette   # pełne palety skal
-sudo python3 tools/led_test.py --transitions   # podgląd wszystkich przejść
+sudo python3 tools/led_test.py --transitions   # podgląd efektów gaszenia
+sudo python3 tools/led_test.py --intros        # podgląd efektów rysowania temperatur
 ```
 
 Przed testem zatrzymaj główny program (`sudo pkill -f main.py`), bo dwa programy nie mogą naraz sterować paskiem.
@@ -80,13 +81,17 @@ Czytają je inne programy (aplikacja z temperaturą, zegarek Garmin), więc nie 
 - `temperatures.txt`: jedna linia na pomiar, `<czas ISO Warszawa>,<dom>,<zewnątrz>`, maksymalnie ok. 800 linii
 - `monkey.txt`: trzy linie, `<dom>`, `<zewnątrz>`, `<HH:MM:SS>`
 
-## Przejścia przy odświeżaniu
+## Efekty przy odświeżaniu
 
-Zanim narysują się nowe temperatury, stary obraz gaśnie jednym z efektów:
-`fade` (płynne wygaszenie), `dissolve` (losowe gaśnięcie diod), `comet` (kometa),
-`rainbow` (tęcza), `curtain` (zamykanie od końców paska), `clear` (od razu).
-W `config.py` ustaw `TRANSITION = "random"` (losowanie z `TRANSITIONS_ENABLED`)
-albo nazwę jednego efektu. Własny efekt dodasz jako metodę w `display.py` i wpisem w słowniku `_transitions`.
+Każde odświeżenie ma dwa etapy i na każdym działa osobny efekt (domyślnie losowy,
+nigdy ten sam dwa razy z rzędu):
+
+- **Koniec wyświetlania** (gaszenie starego obrazu): `fade`, `dissolve`, `comet`, `rainbow`, `curtain`, `clear`
+- **Początek wyświetlania** (pojawianie się nowych temperatur): `fill`, `fade`, `twinkle`, `comet`, `rainbow`, `curtain`
+
+W `config.py` ustaw `TRANSITION` i `INTRO` na `"random"` (losowanie z list `TRANSITIONS_ENABLED`
+i `INTROS_ENABLED`) albo na nazwę jednego efektu. Nowy efekt dodasz jako metodę w `display.py`
+i wpisem w słowniku `_transitions` lub `_intros`.
 
 ## Najczęstsze zmiany
 

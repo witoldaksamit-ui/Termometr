@@ -49,8 +49,17 @@ LOOP_PAUSE_S = 10                # przerwa po narysowaniu temperatur
 RESTART_DELAY_S = 5              # przerwa przed ponowną próbą po błędzie
 PUBLISH_EVERY_N_LOOPS = 8        # co ile pętli wysyłamy dane na GitHub
 
-# --- Przejścia przy odświeżaniu ------------------------------------------------
-# Efekt, którym gaśnie stary obraz, zanim narysują się nowe temperatury.
+# --- Efekty przy odświeżaniu --------------------------------------------------
+# Na początku wyświetlania (jak pojawiają się nowe temperatury).
+# Dostępne: "fill" (klasyczne wypełnianie dioda po diodzie), "fade" (płynne rozjaśnienie),
+#           "twinkle" (diody pojawiają się losowo z białym błyskiem), "comet" (kometa
+#           zostawia za sobą obraz), "rainbow" (tęcza zamienia się w obraz),
+#           "curtain" (obraz otwiera się od końców paska ku środkowi).
+# "random" = losuje z listy INTROS_ENABLED (bez powtarzania tego samego dwa razy z rzędu).
+INTRO = "random"
+INTROS_ENABLED = ["fill", "fade", "twinkle", "comet", "rainbow", "curtain"]
+
+# Na końcu wyświetlania: efekt, którym gaśnie stary obraz, zanim narysują się nowe temperatury.
 # Dostępne: "fade" (płynne wygaszenie), "dissolve" (losowe gaśnięcie diod),
 #           "comet" (kometa zmiatająca obraz), "rainbow" (tęcza, potem wygaszenie),
 #           "curtain" (zamykanie od końców paska), "clear" (zgaszenie od razu).

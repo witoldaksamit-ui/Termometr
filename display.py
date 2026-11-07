@@ -1,9 +1,9 @@
-"""Obsługa pasków LED: skale temperatury, animacje i przejścia między odświeżeniami."""
+"""Obsługa pasków LED: skale temperatury oraz efekty na początku i na końcu wyświetlania."""
 
 import logging
 import random
 import time
-from typing import Optional
+from typing import Callable, Dict, List, Optional
 
 from rpi_ws281x import Adafruit_NeoPixel, Color
 
@@ -58,14 +58,26 @@ class LedDisplay:
             config.LED_CHANNEL,
         )
         self.strip.begin()
-        self._frame = [OFF] * config.LED_COUNT  # to, co aktualnie świeci
+        self._frame: List[int] = [OFF] * config.LED_COUNT  # to, co aktualnie świeci
         self._last_transition: Optional[str] = None
-        self._transitions = {
+        self._last_intro: Optional[str] = None
+
+        # Efekty na KOŃCU wyświetlania: gaszą stary obraz.
+        self._transitions: Dict[str, Callable[[], None]] = {
             "clear": self.clear,
             "fade": self._fade_out,
             "dissolve": self._dissolve,
             "comet": self._comet,
-            "rainbow": self._rainbow,
+            "rainbow": self._rainbow_out,
+            "curtain": self._curtain,
+        }
+        # Efekty na POCZĄTKU wyświetlania: budują nowy obraz (argument = docelowa ramka).
+        self._intros: Dict[str, Callable[[List[int]], None]] = {
+            "fill": self._intro_fill,
+            "fade": self._intro_fade,
+            "twinkle": self._intro_twinkle,
+            "comet": self._comet,
+            "rainbow": self._intro_rainbow,
             "curtain": self._curtain,
         }
 
@@ -90,19 +102,46 @@ class LedDisplay:
     def turn_off(self) -> None:
         self.wipe(Color(0, 0, 0), 0.01)
 
-    # --- skale temperatury -----------------------------------------------------
-    def _draw_scale(self, palette, offset: int, lit: int) -> None:
-        for i, color in enumerate(palette):
-            self._set(offset + i, color if i < lit else OFF)
-            self.strip.show()
-            time.sleep(config.PIXEL_DELAY_S)
+    def _apply(self, frame: List[int]) -> None:
+        """Ustawia dokładnie podany obraz."""
+        for i, color in enumerate(frame):
+            self._set(i, color)
+        self.strip.show()
 
-    def show_temps(self, outdoor: int, indoor: int) -> None:
-        """Rysuje obie skale: zewnętrzną (diody od 0) i domową (zaraz po niej)."""
+    def _pick_effect(self, requested: str, enabled, registry, last: Optional[str], fallback: str) -> str:
+        """Wybiera efekt: konkretny, albo losowy z listy (bez powtórzenia poprzedniego)."""
+        name = requested
+        if name == "random":
+            choices = [n for n in enabled if n in registry]
+            if len(choices) > 1 and last in choices:
+                choices.remove(last)
+            name = random.choice(choices) if choices else fallback
+        if name not in registry:
+            log.warning("Nieznany efekt '%s', używam '%s'", name, fallback)
+            name = fallback
+        return name
+
+    # --- skale temperatury -----------------------------------------------------
+    def target_frame(self, outdoor: int, indoor: int) -> List[int]:
+        """Docelowy obraz dla podanych temperatur (kolor albo zgaszona dioda dla każdej diody)."""
         lit_ext = lit_count(outdoor, config.EXT_MIN_TEMP, config.LED_COUNT_EXT)
         lit_int = lit_count(indoor, config.INT_MIN_TEMP, config.LED_COUNT_INT)
-        self._draw_scale(COLORS_EXT, 0, lit_ext)
-        self._draw_scale(COLORS_INT, config.LED_COUNT_EXT, lit_int)
+        frame = [OFF] * config.LED_COUNT
+        for i, color in enumerate(COLORS_EXT):
+            frame[i] = color if i < lit_ext else OFF
+        for i, color in enumerate(COLORS_INT):
+            frame[config.LED_COUNT_EXT + i] = color if i < lit_int else OFF
+        return frame
+
+    def show_temps(self, outdoor: int, indoor: int, intro: Optional[str] = None) -> None:
+        """Rysuje obie skale (zewnętrzną od diody 0, domową zaraz po niej) wybranym efektem."""
+        target = self.target_frame(outdoor, indoor)
+        name = self._pick_effect(
+            intro or config.INTRO, config.INTROS_ENABLED, self._intros, self._last_intro, "fill"
+        )
+        self._last_intro = name
+        self._intros[name](target)
+        self._apply(target)  # gwarancja, że na końcu świeci dokładnie to, co trzeba
 
     def show_palette(self) -> None:
         """Test: zapala obie skale w pełnych kolorach."""
@@ -115,19 +154,16 @@ class LedDisplay:
             self.strip.show()
             time.sleep(0.03)
 
-    # --- przejścia (kończą się zawsze na zgaszonym pasku) ----------------------
+    # --- koniec wyświetlania: gaszenie starego obrazu ----------------------------
     def transition(self, name: Optional[str] = None) -> None:
         """Gasi aktualny obraz wybranym efektem, a potem robi krótką przerwę w ciemności."""
-        name = name or config.TRANSITION
-        if name == "random":
-            choices = [n for n in config.TRANSITIONS_ENABLED if n in self._transitions]
-            if len(choices) > 1 and self._last_transition in choices:
-                choices.remove(self._last_transition)  # nie powtarzaj tego samego dwa razy z rzędu
-            name = random.choice(choices) if choices else "clear"
-        if name not in self._transitions:
-            log.warning("Nieznane przejście '%s', używam 'clear'", name)
-            name = "clear"
-
+        name = self._pick_effect(
+            name or config.TRANSITION,
+            config.TRANSITIONS_ENABLED,
+            self._transitions,
+            self._last_transition,
+            "clear",
+        )
         self._last_transition = name
         self._transitions[name]()
         self.clear()  # gwarancja, że pasek jest całkiem zgaszony
@@ -157,23 +193,7 @@ class LedDisplay:
             self.strip.show()
             time.sleep(delay)
 
-    def _comet(self, tail: int = 8, delay: float = 0.015) -> None:
-        """Kolorowa kometa z ogonem przebiega przez pasek i zmiata stary obraz."""
-        n = self.strip.numPixels()
-        hue = random.randrange(256)
-        for pos in range(n + tail):
-            for k in range(tail):
-                index = pos - k
-                if 0 <= index < n:
-                    factor = 1.0 if k == 0 else (1 - k / tail) ** 2
-                    self._set(index, scale_color(wheel(hue + k * 6), factor))
-            behind = pos - tail
-            if 0 <= behind < n:
-                self._set(behind, OFF)
-            self.strip.show()
-            time.sleep(delay)
-
-    def _rainbow(self, duration: float = 1.5, fps: int = 50) -> None:
+    def _rainbow_out(self, duration: float = 1.5, fps: int = 50) -> None:
         """Tęcza przesuwa się po całym pasku, a potem płynnie gaśnie."""
         n = self.strip.numPixels()
         for frame in range(int(duration * fps)):
@@ -183,16 +203,89 @@ class LedDisplay:
             time.sleep(1 / fps)
         self._fade_out()
 
-    def _curtain(self, delay: float = 0.03) -> None:
-        """Dwa kolorowe światełka ruszają od końców paska i zamykają go jak kurtynę."""
+    # --- efekty działające w obie strony ----------------------------------------
+    # behind = obraz, który zostaje ZA efektem: None = zgaszony pasek (gaszenie),
+    # lista kolorów = docelowy obraz (budowanie).
+    def _comet(self, behind: Optional[List[int]] = None, tail: int = 8, delay: float = 0.015) -> None:
+        """Kolorowa kometa z ogonem przebiega przez pasek; za nią zostaje obraz `behind`."""
         n = self.strip.numPixels()
-        for k in range((n + 1) // 2):
+        behind = behind or [OFF] * n
+        hue = random.randrange(256)
+        for pos in range(n + tail):
+            for k in range(tail):
+                index = pos - k
+                if 0 <= index < n:
+                    factor = 1.0 if k == 0 else (1 - k / tail) ** 2
+                    self._set(index, scale_color(wheel(hue + k * 6), factor))
+            settled = pos - tail
+            if 0 <= settled < n:
+                self._set(settled, behind[settled])
+            self.strip.show()
+            time.sleep(delay)
+
+    def _curtain(self, behind: Optional[List[int]] = None, delay: float = 0.03) -> None:
+        """Dwa kolorowe światełka biegną od końców paska ku środkowi; za nimi zostaje obraz `behind`."""
+        n = self.strip.numPixels()
+        behind = behind or [OFF] * n
+        last = (n + 1) // 2 - 1
+        for k in range(last + 1):
             left, right = k, n - 1 - k
             color = wheel(k * 6)
             self._set(left, color)
             self._set(right, color)
             if k > 0:
-                self._set(left - 1, OFF)
-                self._set(right + 1, OFF)
+                self._set(left - 1, behind[left - 1])
+                self._set(right + 1, behind[right + 1])
             self.strip.show()
             time.sleep(delay)
+        self._set(last, behind[last])
+        self._set(n - 1 - last, behind[n - 1 - last])
+        self.strip.show()
+
+    # --- początek wyświetlania: budowanie nowego obrazu --------------------------
+    def _intro_fill(self, target: List[int]) -> None:
+        """Klasyczne wypełnianie diody po diodzie od początku paska."""
+        for i, color in enumerate(target):
+            self._set(i, color)
+            self.strip.show()
+            time.sleep(config.PIXEL_DELAY_S)
+
+    def _intro_fade(self, target: List[int], steps: int = 25, delay: float = 0.04) -> None:
+        """Cały obraz płynnie się rozjaśnia z ciemności."""
+        for step in range(1, steps + 1):
+            factor = (step / steps) ** 2
+            for i, color in enumerate(target):
+                self._set(i, scale_color(color, factor))
+            self.strip.show()
+            time.sleep(delay)
+
+    def _intro_twinkle(self, target: List[int], duration: float = 2.0, flash_len: int = 3) -> None:
+        """Diody pojawiają się w losowej kolejności: najpierw białym błyskiem, potem we właściwym kolorze."""
+        lit = [i for i, color in enumerate(target) if color != OFF]
+        if not lit:
+            return
+        random.shuffle(lit)
+        delay = duration / len(lit)
+        flash = Color(255, 255, 255)
+        recent: List[int] = []
+        for i in lit:
+            self._set(i, flash)
+            recent.append(i)
+            if len(recent) > flash_len:
+                settled = recent.pop(0)
+                self._set(settled, target[settled])
+            self.strip.show()
+            time.sleep(delay)
+        for i in recent:
+            self._set(i, target[i])
+        self.strip.show()
+
+    def _intro_rainbow(self, target: List[int], lead_frames: int = 30, fps: int = 50) -> None:
+        """Najpierw tęcza płynie po całym pasku, potem od początku paska zamienia się w obraz docelowy."""
+        n = self.strip.numPixels()
+        for frame in range(lead_frames + n + 1):
+            revealed = max(0, frame - lead_frames)
+            for i in range(n):
+                self._set(i, target[i] if i < revealed else wheel(i * 256 // n + frame * 8))
+            self.strip.show()
+            time.sleep(1 / fps)
