@@ -1,36 +1,43 @@
-"""Odczyt temperatur: czujnik DS18B20 (dom) i czujnik Aqara przez Zigbee2MQTT (zewnątrz)."""
+"""Odczyt czujnika Aqara (salon) przez Zigbee2MQTT: temperatura i wilgotność z dziennika usługi."""
 
 import logging
 import os
 import re
 import subprocess
-from typing import Optional
-
-from w1thermsensor import W1ThermSensor
+from typing import NamedTuple, Optional
 
 import config
 
 log = logging.getLogger(__name__)
 
-# Dopasowuje fragment payloadu MQTT w dzienniku, np.  "temperature":8.98
+# Dopasowują fragment payloadu MQTT w dzienniku, np.  "temperature":21.98  /  "humidity":45.2
+# (cudzysłów bywa poprzedzony ukośnikiem, gdy payload jest zapisany jako tekst w logu)
 _TEMPERATURE_RE = re.compile(r'temperature\\?"\s*:\s*(-?\d+(?:\.\d+)?)')
+_HUMIDITY_RE = re.compile(r'humidity\\?"\s*:\s*(-?\d+(?:\.\d+)?)')
 
 
-def read_indoor() -> float:
-    """Temperatura w domu z DS18B20. Przy awarii czujnika rzuca wyjątek."""
-    return W1ThermSensor().get_temperature()
+class AqaraReading(NamedTuple):
+    temperature: float
+    humidity: Optional[float]  # None, gdy w dzienniku nie ma wilgotności
 
 
-def parse_outdoor_temperature(log_text: str, device_id: Optional[str] = None) -> Optional[float]:
-    """Zwraca OSTATNI odczyt temperatury z tekstu dziennika albo None, gdy go brak."""
+def parse_aqara(log_text: str, device_id: Optional[str] = None) -> Optional[AqaraReading]:
+    """Zwraca OSTATNI odczyt z tekstu dziennika albo None, gdy brak temperatury.
+    Temperaturę i wilgotność bierze z tej samej (ostatniej) linii z temperaturą."""
+    lines = log_text.splitlines()
     if device_id:
-        log_text = "\n".join(line for line in log_text.splitlines() if device_id in line)
-    matches = _TEMPERATURE_RE.findall(log_text)
-    return float(matches[-1]) if matches else None
+        lines = [line for line in lines if device_id in line]
+    for line in reversed(lines):
+        temps = _TEMPERATURE_RE.findall(line)
+        if not temps:
+            continue
+        hums = _HUMIDITY_RE.findall(line)
+        return AqaraReading(float(temps[-1]), float(hums[-1]) if hums else None)
+    return None
 
 
-def read_outdoor() -> Optional[float]:
-    """Temperatura zewnętrzna z dziennika Zigbee2MQTT albo None, gdy nie udało się jej odczytać."""
+def read_aqara() -> Optional[AqaraReading]:
+    """Odczyt Aqara z dziennika Zigbee2MQTT albo None, gdy nie udało się go odczytać."""
     cmd = [
         "journalctl",
         "-u", config.ZIGBEE_SERVICE,
@@ -50,4 +57,4 @@ def read_outdoor() -> Optional[float]:
         log.warning("journalctl zakończył się kodem %s: %s", result.returncode, result.stderr.strip())
         return None
 
-    return parse_outdoor_temperature(result.stdout, config.ZIGBEE_DEVICE_ID)
+    return parse_aqara(result.stdout, config.ZIGBEE_DEVICE_ID)

@@ -1,9 +1,9 @@
 # Termometr LED
 
-Program na Raspberry Pi, który pokazuje na paskach LED temperaturę w domu
-(czujnik DS18B20) i na zewnątrz (czujnik Aqara przez Zigbee2MQTT) oraz co kilka
-minut wysyła pomiary do repozytorium `velvethome.github.io`. Odczytuje też czujniki
-temperatury i wilgotności Tuya (pralnia, sypialnia) przez chmurę Tuya.
+Program na Raspberry Pi, który pokazuje na paskach LED temperaturę w salonie
+(czujnik Aqara przez Zigbee2MQTT) i na zewnątrz (czujnik Tuya „sypialnia”, zamontowany
+za oknem) oraz co kilka minut wysyła pomiary do repozytorium `velvethome.github.io`.
+Czujniki Tuya (pralnia, sypialnia) są odczytywane przez chmurę Tuya.
 
 ## Struktura
 
@@ -11,7 +11,7 @@ temperatury i wilgotności Tuya (pralnia, sypialnia) przez chmurę Tuya.
 |---|---|
 | `main.py` | pętla główna, obsługa błędów i zatrzymania |
 | `config.py` | **wszystkie ustawienia** (piny, czasy, repozytorium, zakresy skal) |
-| `sensors.py` | odczyt DS18B20 i temperatury zewnętrznej z dziennika Zigbee2MQTT |
+| `sensors.py` | odczyt temperatury i wilgotności Aqara (salon) z dziennika Zigbee2MQTT |
 | `display.py` | rysowanie skal temperatury i animacje na LED |
 | `colors.py` | palety kolorów obu skal |
 | `tuya_sensors.py` | odczyt czujników Tuya (pralnia, sypialnia) z chmury Tuya |
@@ -83,8 +83,8 @@ Przed testem zatrzymaj główny program (`sudo pkill -f main.py`), bo dwa progra
 
 Czytają je inne programy (aplikacja z temperaturą, zegarek Garmin), więc nie zmieniaj formatu bez sprawdzenia:
 
-- `temperatures.txt`: jedna linia na pomiar, `<czas ISO Warszawa>,<dom>,<zewnątrz>`, maksymalnie ok. 800 linii
-- `monkey.txt`: trzy linie, `<dom>`, `<zewnątrz>`, `<HH:MM:SS>`
+- `temperatures.txt`: jedna linia na pomiar, `<czas ISO Warszawa>,<salon>,<zewnątrz>`, maksymalnie ok. 800 linii
+- `monkey.txt`: trzy linie, `<salon>`, `<zewnątrz>`, `<HH:MM:SS>`
 - `temperatures_pralnia.txt`, `temperatures_sypialnia.txt`: jedna linia na pomiar,
   `<czas ISO Warszawa>,<temperatura>,<wilgotność>`, tylko ostatnie 24 h (czyta je strona licznika gazu)
 
@@ -105,9 +105,9 @@ i wpisem w słowniku `_transitions` lub `_intros`.
 - Inna jasność lub piny LED: `config.py`, sekcja *Paski LED*
 - Inny zakres skali (np. skala domowa od 15 °C): `EXT_MIN_TEMP` / `INT_MIN_TEMP` w `config.py` oraz paleta w `colors.py`
 - Częstsza wysyłka na GitHub: `PUBLISH_EVERY_N_LOOPS`
-- Kilka czujników Zigbee: ustaw `ZIGBEE_DEVICE_ID` na identyfikator czujnika zewnętrznego
+- Kilka czujników Zigbee: ustaw `ZIGBEE_DEVICE_ID` na identyfikator czujnika w salonie
 - Nowy czujnik Tuya: dopisz go do `TUYA_DEVICES` w `config.py` (plik `temperatures_<nazwa>.txt` utworzy się sam)
 - Częstość odczytu Tuya: `TUYA_INTERVAL_S` (uwaga na limit zapytań projektu w chmurze Tuya)
-- Źródło temperatury zewnętrznej: `OUTDOOR_TUYA_SENSOR` (domyślnie czujnik Tuya `sypialnia`,
-  `None` = Aqara). Gdy odczyt Tuya jest starszy niż `OUTDOOR_MAX_AGE_S`, program używa
-  Aqara (`OUTDOOR_FALLBACK_AQARA = False` wyłącza tę awaryjną ścieżkę)
+- Źródło temperatury zewnętrznej: `OUTDOOR_TUYA_SENSOR` (nazwa czujnika z `TUYA_DEVICES`).
+  Gdy jego odczyt jest starszy niż `OUTDOOR_MAX_AGE_S`, w logu pojawia się ostrzeżenie,
+  a na diodach zostaje ostatnia znana wartość

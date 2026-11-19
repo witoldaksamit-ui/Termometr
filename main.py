@@ -1,5 +1,5 @@
-"""Termometr LED: pokazuje temperaturę w domu i na zewnątrz na paskach LED
-i wysyła pomiary do repozytorium GitHub.
+"""Termometr LED: pokazuje temperaturę w salonie (Aqara przez Zigbee2MQTT) i na zewnątrz
+(czujnik Tuya) na paskach LED i wysyła pomiary do repozytorium GitHub.
 
 Uruchomienie (wymaga roota ze względu na paski LED):  sudo python3 main.py
 """
@@ -26,24 +26,27 @@ class Thermometer:
         self.publisher = publisher
         self.tuya = tuya
         self.display: Optional[LedDisplay] = None
-        self.outdoor = 0.0  # ostatni znany odczyt zewnętrzny (0 do czasu pierwszego odczytu)
-        self.outdoor_source = "brak"
+        # ostatnie znane odczyty (None do czasu pierwszego odczytu)
+        self.indoor: Optional[float] = None
+        self.indoor_humidity: Optional[float] = None
+        self.outdoor: Optional[float] = None
         # nazwa czujnika Tuya -> (temperatura, wilgotność, time.monotonic() odczytu)
         self.tuya_latest: Dict[str, Tuple[float, int, float]] = {}
         self.loops = 0
 
     def cycle(self) -> None:
         """Jeden obieg: odczyt, rysowanie na LED, ewentualna wysyłka na GitHub."""
-        indoor = sensors.read_indoor()
+        self.update_indoor()
         new_tuya = self.poll_tuya()
         self.update_outdoor()
 
         self.display.transition()
-        self.display.show_temps(round(self.outdoor), round(indoor))
+        self.display.show_temps(self.led_value(self.outdoor, config.EXT_MIN_TEMP),
+                                self.led_value(self.indoor, config.INT_MIN_TEMP))
 
         local_time = datetime.now().strftime("%H:%M:%S")
-        log.info("%s | DS18B20 (dom): %s °C | %s (zewnątrz): %s °C",
-                 local_time, indoor, self.outdoor_source, self.outdoor)
+        log.info("%s | Aqara (salon): %s °C, %s %% | Tuya %s (zewnątrz): %s °C",
+                 local_time, self.indoor, self.indoor_humidity, config.OUTDOOR_TUYA_SENSOR, self.outdoor)
 
         if self.publisher is not None:
             for name, (temp, hum) in new_tuya.items():
@@ -53,9 +56,25 @@ class Thermometer:
         if self.loops >= config.PUBLISH_EVERY_N_LOOPS:
             self.loops = 0
             if self.publisher is not None:
-                self.publisher.publish_readings(indoor, self.outdoor, local_time)
+                if self.indoor is None or self.outdoor is None:
+                    log.warning("Brak odczytu salonu lub zewnętrznego: pomijam zapis temperatures.txt")
+                else:
+                    self.publisher.publish_readings(self.indoor, self.outdoor, local_time)
 
         time.sleep(config.LOOP_PAUSE_S)
+
+    @staticmethod
+    def led_value(temp: Optional[float], scale_min: int) -> int:
+        """Wartość do narysowania na diodach. Bez odczytu skala zostaje zgaszona."""
+        return round(temp) if temp is not None else scale_min - 1
+
+    def update_indoor(self) -> None:
+        """Temperatura i wilgotność w salonie z Aqara. Bez nowego odczytu zostaje ostatnia wartość."""
+        reading = sensors.read_aqara()
+        if reading is not None:
+            self.indoor = reading.temperature
+            if reading.humidity is not None:
+                self.indoor_humidity = reading.humidity
 
     def poll_tuya(self) -> Dict[str, Tuple[float, int]]:
         """Odczyt czujników Tuya (najczęściej co TUYA_INTERVAL_S). Zwraca tylko NOWE odczyty.
@@ -72,28 +91,17 @@ class Thermometer:
             self.tuya_latest[name] = (temp, hum, now)
         return readings
 
-    def tuya_outdoor(self) -> Optional[float]:
-        """Temperatura z czujnika Tuya wskazanego w OUTDOOR_TUYA_SENSOR, jeśli jest świeża."""
-        name = config.OUTDOOR_TUYA_SENSOR
-        if not name:
-            return None
-        reading = self.tuya_latest.get(name)
-        if reading is None or time.monotonic() - reading[2] > config.OUTDOOR_MAX_AGE_S:
-            return None
-        return reading[0]
-
     def update_outdoor(self) -> None:
-        """Temperatura zewnętrzna: najpierw czujnik Tuya, a gdy jego odczyt jest za stary
-        lub go brak, czujnik Aqara (jeśli OUTDOOR_FALLBACK_AQARA). Bez nowego odczytu
-        zostaje ostatnia znana wartość."""
-        value = self.tuya_outdoor()
-        if value is not None:
-            self.outdoor, self.outdoor_source = value, f"Tuya {config.OUTDOOR_TUYA_SENSOR}"
+        """Temperatura zewnętrzna z czujnika Tuya OUTDOOR_TUYA_SENSOR. Gdy odczyt jest starszy
+        niż OUTDOOR_MAX_AGE_S, zostaje ostatnia znana wartość (z ostrzeżeniem w logu)."""
+        reading = self.tuya_latest.get(config.OUTDOOR_TUYA_SENSOR)
+        if reading is None:
             return
-        if config.OUTDOOR_FALLBACK_AQARA or not config.OUTDOOR_TUYA_SENSOR:
-            value = sensors.read_outdoor()
-            if value is not None:
-                self.outdoor, self.outdoor_source = value, "Aqara"
+        age = time.monotonic() - reading[2]
+        if age > config.OUTDOOR_MAX_AGE_S:
+            log.warning("Odczyt Tuya %s ma %d min, pokazuję ostatnią znaną temperaturę zewnętrzną",
+                        config.OUTDOOR_TUYA_SENSOR, age // 60)
+        self.outdoor = reading[0]
 
     def shutdown(self) -> None:
         if self.display is not None:

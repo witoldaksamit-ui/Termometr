@@ -3,8 +3,8 @@
 Format plików jest "kontraktem" z innymi programami (aplikacja z temperaturą,
 zegarek Garmin), więc nie zmieniaj go bez sprawdzenia, kto je czyta:
 
-  temperatures.txt         - jedna linia na pomiar:  <czas ISO, Warszawa>,<dom>,<zewnątrz>
-  monkey.txt               - trzy linie:             <dom> / <zewnątrz> / <HH:MM:SS>
+  temperatures.txt         - jedna linia na pomiar:  <czas ISO, Warszawa>,<salon>,<zewnątrz>
+  monkey.txt               - trzy linie:             <salon> / <zewnątrz> / <HH:MM:SS>
   temperatures_<nazwa>.txt - jedna linia na pomiar:  <czas ISO, Warszawa>,<temperatura>,<wilgotność>
                              (czujniki Tuya, tylko ostatnie TUYA_HISTORY_HOURS godzin)
 """

@@ -68,10 +68,10 @@ TRANSITION = "random"
 TRANSITIONS_ENABLED = ["fade", "dissolve", "comet", "rainbow", "curtain"]
 TRANSITION_PAUSE_S = 0.5         # przerwa w ciemności po przejściu, przed rysowaniem
 
-# --- Czujnik zewnętrzny (Zigbee2MQTT, odczyt z journalctl) --------------------
+# --- Czujnik w salonie: Aqara (Zigbee2MQTT, odczyt z journalctl) --------------
 ZIGBEE_SERVICE = "zigbee2mqtt.service"
 ZIGBEE_JOURNAL_LINES = 200       # ile ostatnich linii dziennika przeszukać
-ZIGBEE_DEVICE_ID = None          # np. "0x00158d0007f00fc5"; None = pierwszy z brzegu
+ZIGBEE_DEVICE_ID = None          # np. "0x00158d0007f00fc5"; None = ostatni odczyt dowolnego czujnika
 
 # --- GitHub ------------------------------------------------------------------
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
@@ -96,6 +96,5 @@ TUYA_FILE_PATTERN = "temperatures_{name}.txt"   # linia: <czas ISO, Warszawa>,<t
 TUYA_HISTORY_HOURS = 24                  # starsze linie są obcinane
 
 # --- Źródło temperatury zewnętrznej (LED, temperatures.txt, monkey.txt) -------
-OUTDOOR_TUYA_SENSOR = "sypialnia"        # nazwa z TUYA_DEVICES; None = zawsze Aqara
-OUTDOOR_MAX_AGE_S = 900                  # starszy odczyt Tuya uznajemy za nieaktualny
-OUTDOOR_FALLBACK_AQARA = True            # gdy brak świeżego odczytu Tuya, użyj Aqara
+OUTDOOR_TUYA_SENSOR = "sypialnia"        # nazwa z TUYA_DEVICES
+OUTDOOR_MAX_AGE_S = 900                  # starszy odczyt Tuya: ostrzeżenie w logu (zostaje ostatnia wartość)
