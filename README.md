@@ -108,3 +108,6 @@ i wpisem w słowniku `_transitions` lub `_intros`.
 - Kilka czujników Zigbee: ustaw `ZIGBEE_DEVICE_ID` na identyfikator czujnika zewnętrznego
 - Nowy czujnik Tuya: dopisz go do `TUYA_DEVICES` w `config.py` (plik `temperatures_<nazwa>.txt` utworzy się sam)
 - Częstość odczytu Tuya: `TUYA_INTERVAL_S` (uwaga na limit zapytań projektu w chmurze Tuya)
+- Źródło temperatury zewnętrznej: `OUTDOOR_TUYA_SENSOR` (domyślnie czujnik Tuya `sypialnia`,
+  `None` = Aqara). Gdy odczyt Tuya jest starszy niż `OUTDOOR_MAX_AGE_S`, program używa
+  Aqara (`OUTDOOR_FALLBACK_AQARA = False` wyłącza tę awaryjną ścieżkę)

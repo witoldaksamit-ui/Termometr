@@ -94,3 +94,8 @@ TUYA_DEVICES = {
 TUYA_INTERVAL_S = 300                    # najczęściej co tyle sekund pytamy chmurę Tuya
 TUYA_FILE_PATTERN = "temperatures_{name}.txt"   # linia: <czas ISO, Warszawa>,<temperatura>,<wilgotność>
 TUYA_HISTORY_HOURS = 24                  # starsze linie są obcinane
+
+# --- Źródło temperatury zewnętrznej (LED, temperatures.txt, monkey.txt) -------
+OUTDOOR_TUYA_SENSOR = "sypialnia"        # nazwa z TUYA_DEVICES; None = zawsze Aqara
+OUTDOOR_MAX_AGE_S = 900                  # starszy odczyt Tuya uznajemy za nieaktualny
+OUTDOOR_FALLBACK_AQARA = True            # gdy brak świeżego odczytu Tuya, użyj Aqara

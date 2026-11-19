@@ -9,7 +9,7 @@ import signal
 import sys
 import time
 from datetime import datetime
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 import config
 import sensors
@@ -27,42 +27,73 @@ class Thermometer:
         self.tuya = tuya
         self.display: Optional[LedDisplay] = None
         self.outdoor = 0.0  # ostatni znany odczyt zewnętrzny (0 do czasu pierwszego odczytu)
+        self.outdoor_source = "brak"
+        # nazwa czujnika Tuya -> (temperatura, wilgotność, time.monotonic() odczytu)
+        self.tuya_latest: Dict[str, Tuple[float, int, float]] = {}
         self.loops = 0
 
     def cycle(self) -> None:
         """Jeden obieg: odczyt, rysowanie na LED, ewentualna wysyłka na GitHub."""
         indoor = sensors.read_indoor()
-        new_outdoor = sensors.read_outdoor()
-        if new_outdoor is not None:
-            self.outdoor = new_outdoor
+        new_tuya = self.poll_tuya()
+        self.update_outdoor()
 
         self.display.transition()
         self.display.show_temps(round(self.outdoor), round(indoor))
 
         local_time = datetime.now().strftime("%H:%M:%S")
-        log.info("%s | DS18B20 (dom): %s °C | Aqara (zewnątrz): %s °C", local_time, indoor, self.outdoor)
+        log.info("%s | DS18B20 (dom): %s °C | %s (zewnątrz): %s °C",
+                 local_time, indoor, self.outdoor_source, self.outdoor)
+
+        if self.publisher is not None:
+            for name, (temp, hum) in new_tuya.items():
+                self.publisher.publish_room(name, temp, hum)
 
         self.loops += 1
         if self.loops >= config.PUBLISH_EVERY_N_LOOPS:
             self.loops = 0
             if self.publisher is not None:
                 self.publisher.publish_readings(indoor, self.outdoor, local_time)
-                self.publish_tuya()
 
         time.sleep(config.LOOP_PAUSE_S)
 
-    def publish_tuya(self) -> None:
-        """Odczyt czujników Tuya (najczęściej co TUYA_INTERVAL_S) i wysyłka na GitHub.
+    def poll_tuya(self) -> Dict[str, Tuple[float, int]]:
+        """Odczyt czujników Tuya (najczęściej co TUYA_INTERVAL_S). Zwraca tylko NOWE odczyty.
         Żaden błąd Tuya nie może przerwać pętli ani zgasić diod."""
         if self.tuya is None:
-            return
+            return {}
         try:
             readings = self.tuya.read_if_due()
         except Exception:
             log.exception("Nieoczekiwany błąd odczytu czujników Tuya")
-            return
+            return {}
+        now = time.monotonic()
         for name, (temp, hum) in readings.items():
-            self.publisher.publish_room(name, temp, hum)
+            self.tuya_latest[name] = (temp, hum, now)
+        return readings
+
+    def tuya_outdoor(self) -> Optional[float]:
+        """Temperatura z czujnika Tuya wskazanego w OUTDOOR_TUYA_SENSOR, jeśli jest świeża."""
+        name = config.OUTDOOR_TUYA_SENSOR
+        if not name:
+            return None
+        reading = self.tuya_latest.get(name)
+        if reading is None or time.monotonic() - reading[2] > config.OUTDOOR_MAX_AGE_S:
+            return None
+        return reading[0]
+
+    def update_outdoor(self) -> None:
+        """Temperatura zewnętrzna: najpierw czujnik Tuya, a gdy jego odczyt jest za stary
+        lub go brak, czujnik Aqara (jeśli OUTDOOR_FALLBACK_AQARA). Bez nowego odczytu
+        zostaje ostatnia znana wartość."""
+        value = self.tuya_outdoor()
+        if value is not None:
+            self.outdoor, self.outdoor_source = value, f"Tuya {config.OUTDOOR_TUYA_SENSOR}"
+            return
+        if config.OUTDOOR_FALLBACK_AQARA or not config.OUTDOOR_TUYA_SENSOR:
+            value = sensors.read_outdoor()
+            if value is not None:
+                self.outdoor, self.outdoor_source = value, "Aqara"
 
     def shutdown(self) -> None:
         if self.display is not None:
@@ -86,7 +117,7 @@ def main() -> None:
     else:
         log.warning("Brak GITHUB_TOKEN: wysyłka na GitHub jest wyłączona (LED działają normalnie)")
 
-    tuya = tuya_sensors.create_reader() if publisher is not None else None
+    tuya = tuya_sensors.create_reader()
     thermometer = Thermometer(publisher, tuya)
     try:
         while True:
