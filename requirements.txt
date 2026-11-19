@@ -1,3 +1,4 @@
 rpi_ws281x
 w1thermsensor
 PyGithub
+tinytuya

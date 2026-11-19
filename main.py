@@ -13,15 +13,18 @@ from typing import Optional
 
 import config
 import sensors
+import tuya_sensors
 from display import LedDisplay
 from publisher import GithubPublisher
+from tuya_sensors import TuyaReader
 
 log = logging.getLogger("termometr")
 
 
 class Thermometer:
-    def __init__(self, publisher: Optional[GithubPublisher]) -> None:
+    def __init__(self, publisher: Optional[GithubPublisher], tuya: Optional[TuyaReader] = None) -> None:
         self.publisher = publisher
+        self.tuya = tuya
         self.display: Optional[LedDisplay] = None
         self.outdoor = 0.0  # ostatni znany odczyt zewnętrzny (0 do czasu pierwszego odczytu)
         self.loops = 0
@@ -44,8 +47,22 @@ class Thermometer:
             self.loops = 0
             if self.publisher is not None:
                 self.publisher.publish_readings(indoor, self.outdoor, local_time)
+                self.publish_tuya()
 
         time.sleep(config.LOOP_PAUSE_S)
+
+    def publish_tuya(self) -> None:
+        """Odczyt czujników Tuya (najczęściej co TUYA_INTERVAL_S) i wysyłka na GitHub.
+        Żaden błąd Tuya nie może przerwać pętli ani zgasić diod."""
+        if self.tuya is None:
+            return
+        try:
+            readings = self.tuya.read_if_due()
+        except Exception:
+            log.exception("Nieoczekiwany błąd odczytu czujników Tuya")
+            return
+        for name, (temp, hum) in readings.items():
+            self.publisher.publish_room(name, temp, hum)
 
     def shutdown(self) -> None:
         if self.display is not None:
@@ -69,7 +86,8 @@ def main() -> None:
     else:
         log.warning("Brak GITHUB_TOKEN: wysyłka na GitHub jest wyłączona (LED działają normalnie)")
 
-    thermometer = Thermometer(publisher)
+    tuya = tuya_sensors.create_reader() if publisher is not None else None
+    thermometer = Thermometer(publisher, tuya)
     try:
         while True:
             try:

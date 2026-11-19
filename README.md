@@ -2,7 +2,8 @@
 
 Program na Raspberry Pi, który pokazuje na paskach LED temperaturę w domu
 (czujnik DS18B20) i na zewnątrz (czujnik Aqara przez Zigbee2MQTT) oraz co kilka
-minut wysyła pomiary do repozytorium `velvethome.github.io`.
+minut wysyła pomiary do repozytorium `velvethome.github.io`. Odczytuje też czujniki
+temperatury i wilgotności Tuya (pralnia, sypialnia) przez chmurę Tuya.
 
 ## Struktura
 
@@ -13,7 +14,8 @@ minut wysyła pomiary do repozytorium `velvethome.github.io`.
 | `sensors.py` | odczyt DS18B20 i temperatury zewnętrznej z dziennika Zigbee2MQTT |
 | `display.py` | rysowanie skal temperatury i animacje na LED |
 | `colors.py` | palety kolorów obu skal |
-| `publisher.py` | wysyłka `temperatures.txt` i `monkey.txt` na GitHub |
+| `tuya_sensors.py` | odczyt czujników Tuya (pralnia, sypialnia) z chmury Tuya |
+| `publisher.py` | wysyłka `temperatures.txt`, `monkey.txt` i `temperatures_<nazwa>.txt` na GitHub |
 | `tools/led_test.py` | test sprzętu LED |
 
 ## Instalacja
@@ -21,7 +23,10 @@ minut wysyła pomiary do repozytorium `velvethome.github.io`.
 ```bash
 pip3 install -r requirements.txt
 cp .env.example .env      # i wpisz w nim nowy token GitHuba
+cp /home/pi/Projekty/tinytuya.json .   # klucze projektu Tuya (plik jest w .gitignore)
 ```
+
+Bez pliku `tinytuya.json` program działa, tylko bez czujników Tuya (ostrzeżenie w logu).
 
 Token: GitHub → Settings → Developer settings → Fine-grained tokens, dostęp tylko
 do `velvethome.github.io`, uprawnienie *Contents: Read and write*.
@@ -80,6 +85,8 @@ Czytają je inne programy (aplikacja z temperaturą, zegarek Garmin), więc nie 
 
 - `temperatures.txt`: jedna linia na pomiar, `<czas ISO Warszawa>,<dom>,<zewnątrz>`, maksymalnie ok. 800 linii
 - `monkey.txt`: trzy linie, `<dom>`, `<zewnątrz>`, `<HH:MM:SS>`
+- `temperatures_pralnia.txt`, `temperatures_sypialnia.txt`: jedna linia na pomiar,
+  `<czas ISO Warszawa>,<temperatura>,<wilgotność>`, tylko ostatnie 24 h (czyta je strona licznika gazu)
 
 ## Efekty przy odświeżaniu
 
@@ -99,3 +106,5 @@ i wpisem w słowniku `_transitions` lub `_intros`.
 - Inny zakres skali (np. skala domowa od 15 °C): `EXT_MIN_TEMP` / `INT_MIN_TEMP` w `config.py` oraz paleta w `colors.py`
 - Częstsza wysyłka na GitHub: `PUBLISH_EVERY_N_LOOPS`
 - Kilka czujników Zigbee: ustaw `ZIGBEE_DEVICE_ID` na identyfikator czujnika zewnętrznego
+- Nowy czujnik Tuya: dopisz go do `TUYA_DEVICES` w `config.py` (plik `temperatures_<nazwa>.txt` utworzy się sam)
+- Częstość odczytu Tuya: `TUYA_INTERVAL_S` (uwaga na limit zapytań projektu w chmurze Tuya)

@@ -81,3 +81,16 @@ TEMPERATURES_FILE = "temperatures.txt"   # historia pomiarów (czytana m.in. prz
 GARMIN_FILE = "monkey.txt"               # ostatni odczyt (3 linie, czytany przez zegarek)
 TEMPERATURES_MAX_LINES = 800             # starsze linie są obcinane
 TIMEZONE = "Europe/Warsaw"               # strefa czasowa znaczników w temperatures.txt
+
+# --- Czujniki Tuya (temperatura i wilgotność, przez chmurę Tuya) --------------
+# Klucze projektu z iot.tuya.com (apiRegion, apiKey, apiSecret). Plik jest w .gitignore.
+TUYA_CONFIG_FILE = BASE_DIR / "tinytuya.json"
+# nazwa -> identyfikator urządzenia; nazwa trafia do nazwy pliku temperatures_<nazwa>.txt
+# Pusty słownik ({}) wyłącza odczyt czujników Tuya.
+TUYA_DEVICES = {
+    "pralnia": "bf22a8ae0e7d2f7e99w8oz",
+    "sypialnia": "bf6f151e6964c9f11btvp3",
+}
+TUYA_INTERVAL_S = 300                    # najczęściej co tyle sekund pytamy chmurę Tuya
+TUYA_FILE_PATTERN = "temperatures_{name}.txt"   # linia: <czas ISO, Warszawa>,<temperatura>,<wilgotność>
+TUYA_HISTORY_HOURS = 24                  # starsze linie są obcinane
