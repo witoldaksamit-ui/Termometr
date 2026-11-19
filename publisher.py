@@ -6,7 +6,7 @@ zegarek Garmin), więc nie zmieniaj go bez sprawdzenia, kto je czyta:
   temperatures.txt         - jedna linia na pomiar:  <czas ISO, Warszawa>,<salon>,<zewnątrz>
   monkey.txt               - trzy linie:             <salon> / <zewnątrz> / <HH:MM:SS>
   temperatures_<nazwa>.txt - jedna linia na pomiar:  <czas ISO, Warszawa>,<temperatura>,<wilgotność>
-                             (czujniki Tuya, tylko ostatnie TUYA_HISTORY_HOURS godzin)
+                             (salon z Aqara oraz czujniki Tuya, tylko ostatnie TUYA_HISTORY_HOURS godzin)
 """
 
 import logging
@@ -89,11 +89,13 @@ class GithubPublisher:
                 log.error("Nie udało się zapisać %s: %s", path, exc)
         return ok
 
-    def publish_room(self, name: str, temperature: float, humidity: int) -> bool:
-        """Dopisuje pomiar czujnika Tuya do temperatures_<nazwa>.txt, zostawiając tylko
-        ostatnie TUYA_HISTORY_HOURS godzin. Zwraca True, jeśli zapis się udał."""
+    def publish_room(self, name: str, temperature: float, humidity: Optional[float]) -> bool:
+        """Dopisuje pomiar pomieszczenia (salon, pralnia, sypialnia) do temperatures_<nazwa>.txt,
+        zostawiając tylko ostatnie TUYA_HISTORY_HOURS godzin. Bez wilgotności pole zostaje puste.
+        Zwraca True, jeśli zapis się udał."""
         now = datetime.now(ZoneInfo(config.TIMEZONE)).replace(microsecond=0)
-        entry = f"{now.isoformat()},{temperature},{humidity}"
+        hum = "" if humidity is None else humidity
+        entry = f"{now.isoformat()},{temperature},{hum}"
         path = config.TUYA_FILE_PATTERN.format(name=name)
 
         def add_entry(old_text: str) -> str:

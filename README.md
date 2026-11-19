@@ -85,8 +85,10 @@ Czytają je inne programy (aplikacja z temperaturą, zegarek Garmin), więc nie 
 
 - `temperatures.txt`: jedna linia na pomiar, `<czas ISO Warszawa>,<salon>,<zewnątrz>`, maksymalnie ok. 800 linii
 - `monkey.txt`: trzy linie, `<salon>`, `<zewnątrz>`, `<HH:MM:SS>`
-- `temperatures_pralnia.txt`, `temperatures_sypialnia.txt`: jedna linia na pomiar,
-  `<czas ISO Warszawa>,<temperatura>,<wilgotność>`, tylko ostatnie 24 h (czyta je strona licznika gazu)
+- `temperatures_salon.txt` (Aqara, co ok. 2 min), `temperatures_pralnia.txt` i `temperatures_sypialnia.txt`
+  (Tuya, co 5 min; sypialnia to czujnik za oknem, na stronie i w aplikacji „Na zewnątrz”):
+  jedna linia na pomiar, `<czas ISO Warszawa>,<temperatura>,<wilgotność>`, tylko ostatnie 24 h
+  (czytają je strona licznika gazu i aplikacja)
 
 ## Efekty przy odświeżaniu
 

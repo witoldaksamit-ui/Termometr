@@ -60,6 +60,8 @@ class Thermometer:
                     log.warning("Brak odczytu salonu lub zewnętrznego: pomijam zapis temperatures.txt")
                 else:
                     self.publisher.publish_readings(self.indoor, self.outdoor, local_time)
+                if self.indoor is not None:
+                    self.publisher.publish_room(config.INDOOR_ROOM_NAME, self.indoor, self.indoor_humidity)
 
         time.sleep(config.LOOP_PAUSE_S)
 

@@ -72,6 +72,7 @@ TRANSITION_PAUSE_S = 0.5         # przerwa w ciemności po przejściu, przed rys
 ZIGBEE_SERVICE = "zigbee2mqtt.service"
 ZIGBEE_JOURNAL_LINES = 200       # ile ostatnich linii dziennika przeszukać
 ZIGBEE_DEVICE_ID = None          # np. "0x00158d0007f00fc5"; None = ostatni odczyt dowolnego czujnika
+INDOOR_ROOM_NAME = "salon"       # odczyty Aqara trafiają do temperatures_salon.txt (razem z temperatures.txt)
 
 # --- GitHub ------------------------------------------------------------------
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
