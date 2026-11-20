@@ -29,6 +29,7 @@ class Thermometer:
         # ostatnie znane odczyty (None do czasu pierwszego odczytu)
         self.indoor: Optional[float] = None
         self.indoor_humidity: Optional[float] = None
+        self.indoor_battery: Optional[int] = None
         self.outdoor: Optional[float] = None
         # nazwa czujnika Tuya -> (temperatura, wilgotność, time.monotonic() odczytu)
         self.tuya_latest: Dict[str, Tuple[float, int, float]] = {}
@@ -49,8 +50,8 @@ class Thermometer:
                  local_time, self.indoor, self.indoor_humidity, config.OUTDOOR_TUYA_SENSOR, self.outdoor)
 
         if self.publisher is not None:
-            for name, (temp, hum) in new_tuya.items():
-                self.publisher.publish_room(name, temp, hum)
+            for name, r in new_tuya.items():
+                self.publisher.publish_room(name, r.temperature, r.humidity, r.battery)
 
         self.loops += 1
         if self.loops >= config.PUBLISH_EVERY_N_LOOPS:
@@ -61,7 +62,8 @@ class Thermometer:
                 else:
                     self.publisher.publish_readings(self.indoor, self.outdoor, local_time)
                 if self.indoor is not None:
-                    self.publisher.publish_room(config.INDOOR_ROOM_NAME, self.indoor, self.indoor_humidity)
+                    self.publisher.publish_room(config.INDOOR_ROOM_NAME, self.indoor, self.indoor_humidity,
+                                               self.indoor_battery)
 
         time.sleep(config.LOOP_PAUSE_S)
 
@@ -77,8 +79,10 @@ class Thermometer:
             self.indoor = reading.temperature
             if reading.humidity is not None:
                 self.indoor_humidity = reading.humidity
+            if reading.battery is not None:
+                self.indoor_battery = reading.battery
 
-    def poll_tuya(self) -> Dict[str, Tuple[float, int]]:
+    def poll_tuya(self) -> Dict[str, tuya_sensors.Reading]:
         """Odczyt czujników Tuya (najczęściej co TUYA_INTERVAL_S). Zwraca tylko NOWE odczyty.
         Żaden błąd Tuya nie może przerwać pętli ani zgasić diod."""
         if self.tuya is None:
@@ -89,8 +93,8 @@ class Thermometer:
             log.exception("Nieoczekiwany błąd odczytu czujników Tuya")
             return {}
         now = time.monotonic()
-        for name, (temp, hum) in readings.items():
-            self.tuya_latest[name] = (temp, hum, now)
+        for name, r in readings.items():
+            self.tuya_latest[name] = (r.temperature, r.humidity, now)
         return readings
 
     def update_outdoor(self) -> None:

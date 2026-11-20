@@ -7,13 +7,29 @@ nigdy nie przerywają pętli głównej: odczyt danego czujnika jest wtedy po pro
 import json
 import logging
 import time
-from typing import Dict, Optional, Tuple
+from typing import Dict, NamedTuple, Optional, Union
 
 import config
 
 log = logging.getLogger(__name__)
 
-Reading = Tuple[float, int]  # (temperatura °C, wilgotność %)
+class Reading(NamedTuple):
+    temperature: float                  # °C
+    humidity: int                       # %
+    battery: Optional[Union[int, str]]  # procent (np. 85) albo stan ("low" / "middle" / "high"); None, gdy brak
+
+
+# Kody Tuya, pod którymi czujniki podają stan baterii (zależnie od modelu)
+_BATTERY_CODES = ("battery_percentage", "va_battery", "battery_value", "battery_state", "battery")
+
+
+def battery_from_status(status: dict) -> Optional[Union[int, str]]:
+    """Stan baterii ze statusu Tuya: procent (int) albo stan tekstowy; None, gdy czujnik go nie podaje."""
+    for code in _BATTERY_CODES:
+        if code in status and status[code] is not None:
+            value = status[code]
+            return int(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else str(value)
+    return None
 
 
 def is_valid(temperature: float, humidity: float) -> bool:
@@ -72,8 +88,9 @@ class TuyaReader:
                 # (np. czujnik po restarcie jeszcze nie zmierzył). Pełny status pomaga ustalić przyczynę.
                 log.warning("Tuya %s: odrzucony odczyt %s °C, %s %% (pełny status: %s)", name, temp, hum, status)
                 continue
-            readings[name] = (temp, hum)
-            log.info("Tuya %s: %s °C, %s %%", name, temp, hum)
+            battery = battery_from_status(status)
+            readings[name] = Reading(temp, hum, battery)
+            log.info("Tuya %s: %s °C, %s %%, bateria: %s", name, temp, hum, battery)
         return readings
 
     def read_if_due(self) -> Dict[str, Reading]:

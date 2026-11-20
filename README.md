@@ -87,7 +87,8 @@ Czytają je inne programy (aplikacja z temperaturą, zegarek Garmin), więc nie 
 - `monkey.txt`: trzy linie, `<salon>`, `<zewnątrz>`, `<HH:MM:SS>`
 - `temperatures_salon.txt` (Aqara, co ok. 2 min), `temperatures_pralnia.txt` i `temperatures_sypialnia.txt`
   (Tuya, co 5 min; sypialnia to czujnik za oknem, na stronie i w aplikacji „Na zewnątrz”):
-  jedna linia na pomiar, `<czas ISO Warszawa>,<temperatura>,<wilgotność>`, tylko ostatnie 24 h
+  jedna linia na pomiar, `<czas ISO Warszawa>,<temperatura>,<wilgotność>[,<bateria>]`, tylko ostatnie 24 h.
+  Bateria to procent (np. `85`) albo stan z Tuya (`low` / `middle` / `high`); kolumny brak, gdy czujnik jej nie podaje
   (czytają je strona licznika gazu i aplikacja)
 
 ## Efekty przy odświeżaniu

@@ -14,11 +14,13 @@ log = logging.getLogger(__name__)
 # (cudzysłów bywa poprzedzony ukośnikiem, gdy payload jest zapisany jako tekst w logu)
 _TEMPERATURE_RE = re.compile(r'temperature\\?"\s*:\s*(-?\d+(?:\.\d+)?)')
 _HUMIDITY_RE = re.compile(r'humidity\\?"\s*:\s*(-?\d+(?:\.\d+)?)')
+_BATTERY_RE = re.compile(r'"battery\\?"\s*:\s*(\d+(?:\.\d+)?)')
 
 
 class AqaraReading(NamedTuple):
     temperature: float
     humidity: Optional[float]  # None, gdy w dzienniku nie ma wilgotności
+    battery: Optional[int] = None  # procent baterii, None gdy brak w dzienniku
 
 
 def parse_aqara(log_text: str, device_id: Optional[str] = None) -> Optional[AqaraReading]:
@@ -32,7 +34,9 @@ def parse_aqara(log_text: str, device_id: Optional[str] = None) -> Optional[Aqar
         if not temps:
             continue
         hums = _HUMIDITY_RE.findall(line)
-        return AqaraReading(float(temps[-1]), float(hums[-1]) if hums else None)
+        bats = _BATTERY_RE.findall(line)
+        return AqaraReading(float(temps[-1]), float(hums[-1]) if hums else None,
+                            round(float(bats[-1])) if bats else None)
     return None
 
 
