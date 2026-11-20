@@ -16,6 +16,12 @@ log = logging.getLogger(__name__)
 Reading = Tuple[float, int]  # (temperatura °C, wilgotność %)
 
 
+def is_valid(temperature: float, humidity: float) -> bool:
+    """Odczyt jest wiarygodny, gdy wilgotność mieści się w (0, 100] %.
+    Temperatura 0 °C jest prawidłowa (zima), dlatego o odrzuceniu decyduje tylko wilgotność."""
+    return 0 < humidity <= 100
+
+
 class TuyaReader:
     def __init__(self, config_file, devices: Dict[str, str], interval_s: float) -> None:
         self._config_file = config_file
@@ -60,6 +66,11 @@ class TuyaReader:
                 hum = status["va_humidity"]
             except Exception as exc:
                 log.warning("Tuya %s: nie udało się odczytać: %s", name, exc)
+                continue
+            if not is_valid(temp, hum):
+                # Wilgotność 0 % nie występuje w rzeczywistości: to pusty status z chmury
+                # (np. czujnik po restarcie jeszcze nie zmierzył). Pełny status pomaga ustalić przyczynę.
+                log.warning("Tuya %s: odrzucony odczyt %s °C, %s %% (pełny status: %s)", name, temp, hum, status)
                 continue
             readings[name] = (temp, hum)
             log.info("Tuya %s: %s °C, %s %%", name, temp, hum)

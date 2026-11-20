@@ -110,6 +110,8 @@ i wpisem w słowniku `_transitions` lub `_intros`.
 - Kilka czujników Zigbee: ustaw `ZIGBEE_DEVICE_ID` na identyfikator czujnika w salonie
 - Nowy czujnik Tuya: dopisz go do `TUYA_DEVICES` w `config.py` (plik `temperatures_<nazwa>.txt` utworzy się sam)
 - Częstość odczytu Tuya: `TUYA_INTERVAL_S` (uwaga na limit zapytań projektu w chmurze Tuya)
+- Odczyty Tuya z wilgotnością spoza zakresu (0, 100] % (np. same zera z chmury) są pomijane;
+  w logu pojawia się wtedy ostrzeżenie z pełnym statusem czujnika
 - Źródło temperatury zewnętrznej: `OUTDOOR_TUYA_SENSOR` (nazwa czujnika z `TUYA_DEVICES`).
   Gdy jego odczyt jest starszy niż `OUTDOOR_MAX_AGE_S`, w logu pojawia się ostrzeżenie,
   a na diodach zostaje ostatnia znana wartość
