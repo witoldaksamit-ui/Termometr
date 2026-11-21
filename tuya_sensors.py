@@ -1,4 +1,4 @@
-"""Odczyt czujników temperatury i wilgotności Tuya (pralnia, sypialnia) przez chmurę Tuya.
+"""Odczyt czujników temperatury i wilgotności Tuya (pralnia, sypialnia, dwór) przez chmurę Tuya.
 
 Zastępuje osobny skrypt odczyt.py. Błędy chmury (brak sieci, limit zapytań, zły klucz)
 nigdy nie przerywają pętli głównej: odczyt danego czujnika jest wtedy po prostu pomijany.

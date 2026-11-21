@@ -1,9 +1,9 @@
 # Termometr LED
 
 Program na Raspberry Pi, który pokazuje na paskach LED temperaturę w salonie
-(czujnik Aqara przez Zigbee2MQTT) i na zewnątrz (czujnik Tuya „sypialnia”, zamontowany
+(czujnik Aqara przez Zigbee2MQTT) i na zewnątrz (czujnik Tuya „dwor”, zamontowany
 za oknem) oraz co kilka minut wysyła pomiary do repozytorium `velvethome.github.io`.
-Czujniki Tuya (pralnia, sypialnia) są odczytywane przez chmurę Tuya.
+Czujniki Tuya (pralnia, sypialnia, dwor) są odczytywane przez chmurę Tuya.
 
 ## Struktura
 
@@ -14,7 +14,7 @@ Czujniki Tuya (pralnia, sypialnia) są odczytywane przez chmurę Tuya.
 | `sensors.py` | odczyt temperatury i wilgotności Aqara (salon) z dziennika Zigbee2MQTT |
 | `display.py` | rysowanie skal temperatury i animacje na LED |
 | `colors.py` | palety kolorów obu skal |
-| `tuya_sensors.py` | odczyt czujników Tuya (pralnia, sypialnia) z chmury Tuya |
+| `tuya_sensors.py` | odczyt czujników Tuya (pralnia, sypialnia, dwor) z chmury Tuya |
 | `publisher.py` | wysyłka `temperatures.txt`, `monkey.txt` i `temperatures_<nazwa>.txt` na GitHub |
 | `tools/led_test.py` | test sprzętu LED |
 
@@ -85,8 +85,10 @@ Czytają je inne programy (aplikacja z temperaturą, zegarek Garmin), więc nie 
 
 - `temperatures.txt`: jedna linia na pomiar, `<czas ISO Warszawa>,<salon>,<zewnątrz>`, maksymalnie ok. 800 linii
 - `monkey.txt`: trzy linie, `<salon>`, `<zewnątrz>`, `<HH:MM:SS>`
-- `temperatures_salon.txt` (Aqara, co ok. 2 min), `temperatures_pralnia.txt` i `temperatures_sypialnia.txt`
-  (Tuya, co 5 min; sypialnia to czujnik za oknem, na stronie i w aplikacji „Na zewnątrz”):
+- `temperatures_salon.txt` (Aqara, co ok. 2 min) oraz `temperatures_sypialnia.txt`, `temperatures_pralnia.txt`
+  i `temperatures_dwor.txt` (Tuya, co 5 min; dwor to czujnik za oknem). Do 21.11.2026 czujnik za oknem
+  zapisywał do `temperatures_sypialnia.txt`; przy pierwszym starcie nowej wersji jego historia jest
+  przenoszona do `temperatures_dwor.txt` (`TUYA_FILE_MIGRATIONS`):
   jedna linia na pomiar, `<czas ISO Warszawa>,<temperatura>,<wilgotność>[,<bateria>]`, tylko ostatnie 24 h.
   Bateria to procent (np. `85`) albo stan z Tuya (`low` / `middle` / `high`); kolumny brak, gdy czujnik jej nie podaje
   (czytają je strona licznika gazu i aplikacja)

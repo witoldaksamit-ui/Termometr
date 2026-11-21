@@ -90,12 +90,16 @@ TUYA_CONFIG_FILE = BASE_DIR / "tinytuya.json"
 # Pusty słownik ({}) wyłącza odczyt czujników Tuya.
 TUYA_DEVICES = {
     "pralnia": "bf22a8ae0e7d2f7e99w8oz",
-    "sypialnia": "bf6f151e6964c9f11btvp3",
+    "dwor": "bf6f151e6964c9f11btvp3",        # czujnik za oknem (wcześniej zapisywany jako "sypialnia")
+    "sypialnia": "bfaf966b02038b62f8cqik",   # czujnik w sypialni
 }
+# Jednorazowe przeniesienie historii przy starcie: (stara nazwa, nowa nazwa). Gdy plik nowej nazwy
+# już istnieje na GitHubie, nic się nie dzieje. Stary plik jest czyszczony, żeby nie mieszać danych.
+TUYA_FILE_MIGRATIONS = [("sypialnia", "dwor")]
 TUYA_INTERVAL_S = 300                    # najczęściej co tyle sekund pytamy chmurę Tuya
 TUYA_FILE_PATTERN = "temperatures_{name}.txt"   # linia: <czas ISO, Warszawa>,<temperatura>,<wilgotność>
 TUYA_HISTORY_HOURS = 24                  # starsze linie są obcinane
 
 # --- Źródło temperatury zewnętrznej (LED, temperatures.txt, monkey.txt) -------
-OUTDOOR_TUYA_SENSOR = "sypialnia"        # nazwa z TUYA_DEVICES
+OUTDOOR_TUYA_SENSOR = "dwor"             # nazwa z TUYA_DEVICES
 OUTDOOR_MAX_AGE_S = 900                  # starszy odczyt Tuya: ostrzeżenie w logu (zostaje ostatnia wartość)

@@ -89,9 +89,35 @@ class GithubPublisher:
                 log.error("Nie udało się zapisać %s: %s", path, exc)
         return ok
 
+    def migrate_room_file(self, old: str, new: str) -> bool:
+        """Jednorazowo przenosi historię z temperatures_<old>.txt do temperatures_<new>.txt
+        i czyści stary plik. Gdy nowy plik już istnieje (albo starego brak), nic nie robi.
+        Zwraca True, jeśli przeniesienie się odbyło."""
+        repo = self._get_repo()
+        old_path = config.TUYA_FILE_PATTERN.format(name=old)
+        new_path = config.TUYA_FILE_PATTERN.format(name=new)
+        try:
+            repo.get_contents(new_path, ref=self._branch)
+            return False  # już przeniesione
+        except GithubException as exc:
+            if exc.status != 404:
+                raise
+        try:
+            old_contents = repo.get_contents(old_path, ref=self._branch)
+        except GithubException as exc:
+            if exc.status == 404:
+                return False
+            raise
+        repo.create_file(path=new_path, message=COMMIT_MESSAGE,
+                         content=old_contents.decoded_content.decode("utf-8"), branch=self._branch)
+        repo.update_file(path=old_path, message=COMMIT_MESSAGE, content="",
+                         sha=old_contents.sha, branch=self._branch)
+        log.info("Przeniesiono historię %s -> %s (stary plik wyczyszczony)", old_path, new_path)
+        return True
+
     def publish_room(self, name: str, temperature: float, humidity: Optional[float],
                      battery: Optional[object] = None) -> bool:
-        """Dopisuje pomiar pomieszczenia (salon, pralnia, sypialnia) do temperatures_<nazwa>.txt,
+        """Dopisuje pomiar pomieszczenia (salon, sypialnia, pralnia, dwor) do temperatures_<nazwa>.txt,
         zostawiając tylko ostatnie TUYA_HISTORY_HOURS godzin. Bez wilgotności pole zostaje puste.
         Stan baterii (jeśli znany) trafia do 4. kolumny.
         Zwraca True, jeśli zapis się udał."""

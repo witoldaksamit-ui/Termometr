@@ -131,6 +131,13 @@ def main() -> None:
     else:
         log.warning("Brak GITHUB_TOKEN: wysyłka na GitHub jest wyłączona (LED działają normalnie)")
 
+    if publisher is not None:
+        for old, new in config.TUYA_FILE_MIGRATIONS:
+            try:
+                publisher.migrate_room_file(old, new)
+            except Exception as exc:
+                log.warning("Nie udało się przenieść historii %s -> %s: %s", old, new, exc)
+
     tuya = tuya_sensors.create_reader()
     thermometer = Thermometer(publisher, tuya)
     try:
