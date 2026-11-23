@@ -126,8 +126,18 @@ class GithubPublisher:
         entry = f"{now.isoformat()},{temperature},{hum}"
         if battery is not None:
             entry += f",{battery}"   # 4. kolumna: bateria (procent albo low/middle/high)
-        path = config.TUYA_FILE_PATTERN.format(name=name)
+        return self._append_recent(config.TUYA_FILE_PATTERN.format(name=name), entry, now)
 
+    def publish_dehumidifier(self, state) -> bool:
+        """Dopisuje stan osuszacza do osuszacz.txt (ostatnie TUYA_HISTORY_HOURS godzin).
+        Kolumny: czas, włączony (1/0), tryb, wilgotność docelowa, wentylator, wilgotność zmierzona, błędy."""
+        now = datetime.now(ZoneInfo(config.TIMEZONE)).replace(microsecond=0)
+        entry = (f"{now.isoformat()},{int(state.on)},{state.mode},{state.target},"
+                 f"{state.fan},{state.humidity},{state.fault}")
+        return self._append_recent(config.DEHUMIDIFIER_FILE, entry, now)
+
+    def _append_recent(self, path: str, entry: str, now: datetime) -> bool:
+        """Dopisuje linię do pliku, zostawiając tylko ostatnie TUYA_HISTORY_HOURS godzin."""
         def add_entry(old_text: str) -> str:
             lines = keep_recent_lines(old_text, now - timedelta(hours=config.TUYA_HISTORY_HOURS))
             lines.append(entry)

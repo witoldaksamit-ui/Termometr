@@ -92,6 +92,9 @@ Czytają je inne programy (aplikacja z temperaturą, zegarek Garmin), więc nie 
   jedna linia na pomiar, `<czas ISO Warszawa>,<temperatura>,<wilgotność>[,<bateria>]`, tylko ostatnie 24 h.
   Bateria to procent (np. `85`) albo stan z Tuya (`low` / `middle` / `high`); kolumny brak, gdy czujnik jej nie podaje
   (czytają je strona licznika gazu i aplikacja)
+- `osuszacz.txt`: stan osuszacza Warmtec w pralni co 5 min, `<czas>,<włączony 1/0>,<tryb>,<cel %>,<wentylator>,<wilgotność %>,<błędy>`.
+  Tryb 0 = wilgotność docelowa (DRY; COMFORT to cel 60 %), 1 = osuszanie ciągłe (CONT albo TURBO, chmura ich nie rozróżnia).
+  Wentylator 0 = niski, 2 = wysoki. Błędy to bitmapa: bity 0-5 = P1, E3, E5, EH, E1, E2, bit 6 (64) = pełny zbiornik
 
 ## Efekty przy odświeżaniu
 

@@ -96,6 +96,9 @@ TUYA_DEVICES = {
 # Jednorazowe przeniesienie historii przy starcie: (stara nazwa, nowa nazwa). Gdy plik nowej nazwy
 # już istnieje na GitHubie, nic się nie dzieje. Stary plik jest czyszczony, żeby nie mieszać danych.
 TUYA_FILE_MIGRATIONS = [("sypialnia", "dwor")]
+# Osuszacz Warmtec ODT-12N Wi-Fi w pralni (odczyt co TUYA_INTERVAL_S razem z czujnikami); None wyłącza
+DEHUMIDIFIER_ID = "1401128048e729763e64"
+DEHUMIDIFIER_FILE = "osuszacz.txt"   # linia: <czas>,<włączony 1/0>,<tryb>,<cel %>,<wentylator>,<wilgotność %>,<błędy>
 TUYA_INTERVAL_S = 300                    # najczęściej co tyle sekund pytamy chmurę Tuya
 TUYA_FILE_PATTERN = "temperatures_{name}.txt"   # linia: <czas ISO, Warszawa>,<temperatura>,<wilgotność>
 TUYA_HISTORY_HOURS = 24                  # starsze linie są obcinane
