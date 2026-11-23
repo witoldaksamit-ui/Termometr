@@ -1,4 +1,4 @@
-"""Odczyt czujników temperatury i wilgotności Tuya (pralnia, sypialnia, dwór) i osuszacza przez chmurę Tuya.
+"""Odczyt czujników temperatury i wilgotności Tuya (pralnia, sypialnia, dwór) osuszacza i sterownika pieca przez chmurę Tuya.
 
 Zastępuje osobny skrypt odczyt.py. Błędy chmury (brak sieci, limit zapytań, zły klucz)
 nigdy nie przerywają pętli głównej: odczyt danego czujnika jest wtedy po prostu pomijany.
@@ -58,6 +58,38 @@ def dehumidifier_from_properties(properties: list) -> Optional[Dehumidifier]:
         return None
 
 
+class Thermostat(NamedTuple):
+    """Stan sterownika pieca ENGO E901 Wi-Fi (surowe dane DP z chmury Tuya)."""
+    temperature: float   # temp_current, °C (w chmurze w dziesiątych częściach stopnia)
+    target: float        # temp_set, °C
+    heating: bool        # concise_work_state == heating_on: piec grzeje
+    mode: str            # run_mode: program / manual / holiday / temporary / boost / frost
+    battery: Optional[int]  # battery_percentage termostatu
+    online: bool         # tx_online_flag: termostat połączony z odbiornikiem przy piecu
+    fault: int           # fault: bit 0 = błąd czujnika temperatury (ErrorNTC)
+    on: bool             # switch2
+
+
+def thermostat_from_properties(properties: list) -> Optional[Thermostat]:
+    """Stan sterownika pieca z listy właściwości (shadow properties); None, gdy brakuje danych."""
+    v = {p.get("code"): p.get("value") for p in properties}
+    try:
+        state = v.get("concise_work_state") or v.get("work_state") or ""
+        battery = v.get("battery_percentage")
+        return Thermostat(
+            temperature=int(v["temp_current"]) / 10,
+            target=int(v["temp_set"]) / 10,
+            heating=str(state) in ("heating_on", "heating", "heating_low_temp", "manual_on", "tx_lost_heating"),
+            mode=str(v.get("run_mode") or ""),
+            battery=int(battery) if battery is not None else None,
+            online=bool(v.get("tx_online_flag", True)),
+            fault=int(v.get("fault") or 0),
+            on=bool(v.get("switch2", True)),
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def is_valid(temperature: float, humidity: float) -> bool:
     """Odczyt jest wiarygodny, gdy wilgotność mieści się w (0, 100] %.
     Temperatura 0 °C jest prawidłowa (zima), dlatego o odrzuceniu decyduje tylko wilgotność."""
@@ -66,11 +98,13 @@ def is_valid(temperature: float, humidity: float) -> bool:
 
 class TuyaReader:
     def __init__(self, config_file, devices: Dict[str, str], interval_s: float,
-                 dehumidifier_id: Optional[str] = None) -> None:
+                 dehumidifier_id: Optional[str] = None, thermostat_id: Optional[str] = None) -> None:
         self._config_file = config_file
         self._devices = devices
         self._dehumidifier_id = dehumidifier_id
         self._new_dehumidifier: Optional[Dehumidifier] = None  # nowy odczyt osuszacza, do odebrania
+        self._thermostat_id = thermostat_id
+        self._new_thermostat: Optional[Thermostat] = None      # nowy odczyt sterownika pieca, do odebrania
         self._interval_s = interval_s
         self._cloud = None
         self._last_read = 0.0  # time.monotonic() ostatniej próby odczytu
@@ -121,24 +155,34 @@ class TuyaReader:
             readings[name] = Reading(temp, hum, battery)
             log.info("Tuya %s: %s °C, %s %%, bateria: %s", name, temp, hum, battery)
         if self._dehumidifier_id:
-            self._new_dehumidifier = self._read_dehumidifier(cloud)
+            self._new_dehumidifier = self._read_shadow(cloud, "osuszacz", self._dehumidifier_id,
+                                                       dehumidifier_from_properties)
+        if self._thermostat_id:
+            self._new_thermostat = self._read_shadow(cloud, "sterownik pieca", self._thermostat_id,
+                                                     thermostat_from_properties)
         return readings
 
-    def _read_dehumidifier(self, cloud) -> Optional[Dehumidifier]:
-        """Osuszacz ma w chmurze okrojony zestaw standardowy, więc czytamy jego surowe dane (DP)."""
+    def _read_shadow(self, cloud, label: str, device_id: str, parse):
+        """Surowe dane urządzenia (DP): standardowy zestaw w chmurze bywa okrojony (osuszacz)
+        albo nie zawiera np. stanu grzania (sterownik pieca)."""
         try:
-            res = cloud.cloudrequest(f"/v2.0/cloud/thing/{self._dehumidifier_id}/shadow/properties")
+            res = cloud.cloudrequest(f"/v2.0/cloud/thing/{device_id}/shadow/properties")
             if not res.get("success"):
-                log.warning("Tuya osuszacz: błąd odpowiedzi: %s", res)
+                log.warning("Tuya %s: błąd odpowiedzi: %s", label, res)
                 return None
-            state = dehumidifier_from_properties(res["result"]["properties"])
+            state = parse(res["result"]["properties"])
         except Exception as exc:
-            log.warning("Tuya osuszacz: nie udało się odczytać: %s", exc)
+            log.warning("Tuya %s: nie udało się odczytać: %s", label, exc)
             return None
         if state is None:
-            log.warning("Tuya osuszacz: niepełne dane: %s", res)
+            log.warning("Tuya %s: niepełne dane: %s", label, res)
         else:
-            log.info("Tuya osuszacz: %s", state)
+            log.info("Tuya %s: %s", label, state)
+        return state
+
+    def take_thermostat(self) -> Optional[Thermostat]:
+        """Zwraca nowy odczyt sterownika pieca (raz) albo None, gdy od ostatniego wywołania go nie było."""
+        state, self._new_thermostat = self._new_thermostat, None
         return state
 
     def take_dehumidifier(self) -> Optional[Dehumidifier]:
@@ -162,4 +206,4 @@ def create_reader() -> Optional[TuyaReader]:
         log.warning("Brak pliku %s: odczyt czujników Tuya jest wyłączony", config.TUYA_CONFIG_FILE)
         return None
     return TuyaReader(config.TUYA_CONFIG_FILE, config.TUYA_DEVICES, config.TUYA_INTERVAL_S,
-                      config.DEHUMIDIFIER_ID)
+                      config.DEHUMIDIFIER_ID, config.THERMOSTAT_ID)

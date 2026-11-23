@@ -136,6 +136,15 @@ class GithubPublisher:
                  f"{state.fan},{state.humidity},{state.fault}")
         return self._append_recent(config.DEHUMIDIFIER_FILE, entry, now)
 
+    def publish_thermostat(self, state) -> bool:
+        """Dopisuje stan sterownika pieca do piec.txt (ostatnie TUYA_HISTORY_HOURS godzin).
+        Kolumny: czas, temperatura, nastawa, grzeje (1/0), tryb, bateria, łączność (1/0), błędy, włączony (1/0)."""
+        now = datetime.now(ZoneInfo(config.TIMEZONE)).replace(microsecond=0)
+        battery = "" if state.battery is None else state.battery
+        entry = (f"{now.isoformat()},{state.temperature},{state.target},{int(state.heating)},{state.mode},"
+                 f"{battery},{int(state.online)},{state.fault},{int(state.on)}")
+        return self._append_recent(config.THERMOSTAT_FILE, entry, now)
+
     def _append_recent(self, path: str, entry: str, now: datetime) -> bool:
         """Dopisuje linię do pliku, zostawiając tylko ostatnie TUYA_HISTORY_HOURS godzin."""
         def add_entry(old_text: str) -> str:

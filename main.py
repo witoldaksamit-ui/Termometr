@@ -40,6 +40,7 @@ class Thermometer:
         self.update_indoor()
         new_tuya = self.poll_tuya()
         new_dehumidifier = self.take_dehumidifier()
+        new_thermostat = self.take_from_tuya("take_thermostat")
         self.update_outdoor()
 
         self.display.transition()
@@ -55,6 +56,8 @@ class Thermometer:
                 self.publisher.publish_room(name, r.temperature, r.humidity, r.battery)
             if new_dehumidifier is not None:
                 self.publisher.publish_dehumidifier(new_dehumidifier)
+            if new_thermostat is not None:
+                self.publisher.publish_thermostat(new_thermostat)
 
         self.loops += 1
         if self.loops >= config.PUBLISH_EVERY_N_LOOPS:
@@ -102,13 +105,17 @@ class Thermometer:
 
     def take_dehumidifier(self):
         """Nowy odczyt osuszacza z ostatniego odczytu Tuya (albo None)."""
-        take = getattr(self.tuya, "take_dehumidifier", None)
+        return self.take_from_tuya("take_dehumidifier")
+
+    def take_from_tuya(self, method: str):
+        """Nowy odczyt urządzenia (osuszacz, sterownik pieca) z ostatniego odczytu Tuya albo None."""
+        take = getattr(self.tuya, method, None)
         if take is None:
             return None
         try:
             return take()
         except Exception:
-            log.exception("Nieoczekiwany błąd odczytu osuszacza")
+            log.exception("Nieoczekiwany błąd: %s", method)
             return None
 
     def update_outdoor(self) -> None:

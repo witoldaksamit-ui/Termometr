@@ -95,6 +95,9 @@ Czytają je inne programy (aplikacja z temperaturą, zegarek Garmin), więc nie 
 - `osuszacz.txt`: stan osuszacza Warmtec w pralni co 5 min, `<czas>,<włączony 1/0>,<tryb>,<cel %>,<wentylator>,<wilgotność %>,<błędy>`.
   Tryb 0 = wilgotność docelowa (DRY; COMFORT to cel 60 %), 1 = osuszanie ciągłe (CONT albo TURBO, chmura ich nie rozróżnia).
   Wentylator 0 = niski, 2 = wysoki. Błędy to bitmapa: bity 0-5 = P1, E3, E5, EH, E1, E2, bit 6 (64) = pełny zbiornik
+- `piec.txt`: stan sterownika pieca ENGO E901 co 5 min, `<czas>,<temperatura>,<nastawa>,<grzeje 1/0>,<tryb>,<bateria %>,<łączność 1/0>,<błędy>,<włączony 1/0>`.
+  Tryb: program (harmonogram), manual, holiday (urlop), temporary (chwilowy), boost, frost (przeciwzamrożeniowy);
+  łączność = termostat połączony z odbiornikiem przy piecu; błąd bit 0 = czujnik temperatury (ErrorNTC)
 
 ## Efekty przy odświeżaniu
 
